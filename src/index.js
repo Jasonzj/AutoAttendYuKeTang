@@ -26,8 +26,8 @@ const key = new NodeRSA(publicKey, 'pkcs8-public', {
 
 const api = {
   login: 'https://changjiang.yuketang.cn/pc/login/verify_pwd_login/',
-  getOnLessonData: 'https://changjiang.yuketang.cn/api/v3/classroom/on-lesson',
-  attendLesson: 'https://changjiang.yuketang.cn/api/v3/lesson/checkin',
+  getOnLessonData: 'https://changjiang.yuketang.cn/v/course_meta/on_lesson_courses',
+  attendLesson: 'https://changjiang.yuketang.cn/v/lesson/lesson_info_v2',
 }
 
 const login = async (username, password) => {
@@ -42,29 +42,34 @@ const login = async (username, password) => {
   if (!body.success) throw new Error('login failed')
 }
 
-const getOnLessonId = async () => {
+const getOnLessonInfo = async () => {
   const {
-    data: { onLessonClassrooms },
+    data: { on_lessons },
   } = await customGot(api.getOnLessonData).json()
-  return onLessonClassrooms.length > 0 ? onLessonClassrooms[0] : false
+  return on_lessons.length > 0 ? on_lessons[0] : false
 }
 
-const attendLesson = async ({ lessonId, classroomName }) => {
-  const { code } = await customGot(api.attendLesson, {
-    method: 'POST',
-    json: { lessonId, source: 5 },
+const attendLesson = async ({
+  lesson_id,
+  classroom: {
+    course: { name },
+  },
+}) => {
+  // await customGot(`https://changjiang.yuketang.cn/lesson/fullscreen/${lesson_id}?source=5`)
+  const { success } = await customGot(api.attendLesson, {
+    searchParams: { lesson_id },
   }).json()
 
-  if (code === 0) {
-    sendNotify('YuKeTang: success', classroomName)
+  if (success) {
+    sendNotify('YuKeTang: success', name)
   } else {
-    sendNotify('YuKeTang: fail', classroomName)
+    sendNotify('YuKeTang: fail', name)
   }
 }
 
 const execCheckIn = async () => {
   console.log(`Number of executions: ${++count}`)
-  const lessonInfo = await getOnLessonId()
+  const lessonInfo = await getOnLessonInfo()
 
   if (!lessonInfo && count < times) {
     setTimeout(execCheckIn, 1000 * 60 * 5)
@@ -78,8 +83,9 @@ const execCheckIn = async () => {
 }
 
 const startUp = async () => {
-  const { username, password } = process.env
-  await login(username, password)
+  const { USER_INFO } = process.env
+  const [USERNAME, PASSWORD] = USER_INFO.split('|')
+  await login(USERNAME, PASSWORD)
   execCheckIn()
 }
 

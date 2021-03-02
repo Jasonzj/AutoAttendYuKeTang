@@ -1,6 +1,6 @@
 const got = require('got')
 
-const SCKEY = process.env.SCKEY
+const SCKEY = process.env.PUSH_KEY
 
 const sendNotify = (title, message) => {
   if (SCKEY) {
